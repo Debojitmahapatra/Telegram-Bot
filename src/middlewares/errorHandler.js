@@ -1,5 +1,16 @@
 const errorHandler = (err, req, res, next) => {
-  console.error(err);
+  const statusCode = err.statusCode || 500;
+  console.error('Request failed', {
+    name: err.name,
+    message: err.message,
+    statusCode,
+    method: req.method,
+    path: req.path,
+  });
+
+  if (err instanceof SyntaxError && 'body' in err) {
+    return res.status(400).json({ success: false, message: 'Malformed JSON request body' });
+  }
 
   if (err.name === 'MulterError') {
     return res.status(400).json({
@@ -22,9 +33,13 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  res.status(err.statusCode || 500).json({
+  const message = statusCode >= 500 && process.env.NODE_ENV === 'production'
+    ? 'Internal server error'
+    : err.message || 'Internal server error';
+
+  res.status(statusCode).json({
     success: false,
-    message: err.message || 'Internal server error',
+    message,
   });
 };
 

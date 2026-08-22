@@ -1,12 +1,15 @@
-const { google } = require('googleapis');
 const { GoogleIntegration, User, UserPreference } = require('../../models');
 const AppError = require('../../utils/AppError');
 const aiService = require('../../services/ai/ai.service');
 const { encrypt, decrypt, createOAuthState, verifyOAuthState } = require('./googleSecurity.service');
 
-const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
+const GOOGLE_SCOPES = [
+  'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/calendar',
+];
 
 const createOAuthClient = () => {
+  const { google } = require('googleapis');
   const { GOOGLE_CLIENT_ID: clientId, GOOGLE_CLIENT_SECRET: clientSecret, GOOGLE_REDIRECT_URI: redirectUri } = process.env;
   if (!clientId || !clientSecret || !redirectUri) throw new AppError('Google OAuth is not configured', 503);
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
@@ -19,7 +22,7 @@ const getAuthorizationUrl = async (userId) => {
   return createOAuthClient().generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
-    scope: [GMAIL_SCOPE],
+    scope: GOOGLE_SCOPES,
     state: createOAuthState(userId),
   });
 };
@@ -51,7 +54,7 @@ const completeAuthorization = async ({ code, state }) => {
   return userId;
 };
 
-const getGmailClient = async (userId) => {
+const getAuthorizedOAuthClient = async (userId) => {
   const integration = await GoogleIntegration.findOne({ where: { userId, provider: 'gmail' } });
   if (!integration) throw new AppError('Gmail is not connected for this user', 409);
 
@@ -64,7 +67,12 @@ const getGmailClient = async (userId) => {
   client.on('tokens', (tokens) => {
     saveTokens(userId, tokens).catch(() => {});
   });
-  return google.gmail({ version: 'v1', auth: client });
+  return client;
+};
+
+const getGmailClient = async (userId) => {
+  const { google } = require('googleapis');
+  return google.gmail({ version: 'v1', auth: await getAuthorizedOAuthClient(userId) });
 };
 
 const getHeader = (headers, name) => headers?.find((header) => header.name.toLowerCase() === name)?.value || '';
@@ -122,4 +130,5 @@ module.exports = {
   completeAuthorization,
   searchEmails,
   summarizeEmails,
+  getAuthorizedOAuthClient,
 };

@@ -25,7 +25,16 @@ npx sequelize-cli db:migrate
 npm run dev
 ```
 
+### Security configuration
+
+Set `CORS_ORIGIN` to the browser frontend origin. For Telegram webhooks, set a
+random `TELEGRAM_WEBHOOK_SECRET` and configure Telegram with the same secret
+token. API requests are rate-limited by `RATE_LIMIT_WINDOW_MS` and
+`RATE_LIMIT_MAX`.
+
 The API runs at `http://localhost:5000` by default.
+
+Interactive API documentation is available at `http://localhost:5000/api-docs`.
 
 ### Health check
 
