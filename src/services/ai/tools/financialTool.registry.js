@@ -1,6 +1,7 @@
 const financialTools = require('./financial.tools');
 const watchlistTools = require('./watchlist.tools');
 const alertTools = require('./alert.tools');
+const calendarTools = require('./calendar.tools');
 
 const symbolParameter = {
   type: 'object',
@@ -54,13 +55,43 @@ const toolDefinitions = [
       additionalProperties: false,
     },
   ],
+  [
+    'createCalendarEvent',
+    'Create a calendar event only when the user explicitly asks to schedule or create one.',
+    {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        startDateTime: { type: 'string', description: 'RFC3339 date-time with time-zone offset.' },
+        endDateTime: { type: 'string', description: 'RFC3339 date-time with time-zone offset.' },
+        timeZone: { type: 'string', description: 'IANA timezone, such as Asia/Kolkata.' },
+        attendees: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['title', 'startDateTime', 'endDateTime', 'timeZone'],
+      additionalProperties: false,
+    },
+  ],
+  [
+    'createCalendarReminder',
+    'Create a calendar reminder only when the user explicitly asks for a reminder.',
+    {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        remindAt: { type: 'string', description: 'RFC3339 date-time with time-zone offset.' },
+        timeZone: { type: 'string', description: 'IANA timezone, such as Asia/Kolkata.' },
+      },
+      required: ['title', 'remindAt', 'timeZone'],
+      additionalProperties: false,
+    },
+  ],
 ].map(([name, description, parameters]) => ({ type: 'function', function: { name, description, parameters } }));
 
 const isValidSymbol = (value) => typeof value === 'string' && /^[A-Za-z.]{1,10}$/.test(value);
 const isValidQuery = (value) => typeof value === 'string' && value.trim().length > 0 && value.length <= 300;
 
 const executeTool = async (name, args, context = {}) => {
-  const handler = { ...financialTools, ...watchlistTools, ...alertTools }[name];
+  const handler = { ...financialTools, ...watchlistTools, ...alertTools, ...calendarTools }[name];
   if (!handler) return { available: false, message: `Unknown financial tool: ${name}` };
   if ('symbol' in args && !isValidSymbol(args.symbol)) return { available: false, message: 'A valid stock symbol is required.' };
   if ('query' in args && !isValidQuery(args.query)) return { available: false, message: 'A valid financial-news search query is required.' };
@@ -69,6 +100,9 @@ const executeTool = async (name, args, context = {}) => {
   }
   if ('threshold' in args && (!Number.isFinite(args.threshold) || args.threshold <= 0)) {
     return { available: false, message: 'A positive threshold is required.' };
+  }
+  if ('attendees' in args && (!Array.isArray(args.attendees) || args.attendees.some((email) => typeof email !== 'string'))) {
+    return { available: false, message: 'Attendees must be an array of email addresses.' };
   }
 
   return handler(args, context);

@@ -15,7 +15,6 @@ const extractContent = (message) => {
 
 const processUpdate = async (update) => {
   const incomingMessage = update.message;
-  console.log(update)
   if (!incomingMessage || !incomingMessage.from || !incomingMessage.chat) {
     return { ignored: true };
   }

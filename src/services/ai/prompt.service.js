@@ -23,6 +23,7 @@ const buildMessages = ({ userMessage, conversationHistory = [], userPreferences,
 
   return [
     { role: 'system', content: FINANCIAL_ASSISTANT_SYSTEM_PROMPT },
+    { role: 'system', content: `Current UTC date and time: ${new Date().toISOString()}` },
     { role: 'system', content: context },
     ...history,
     { role: 'user', content: userMessage },
